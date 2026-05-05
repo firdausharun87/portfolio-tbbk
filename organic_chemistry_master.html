@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organic Chemistry Reaction Master</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-primary: #0a0a0b;
+            --bg-secondary: #1a1a1b;
+            --bg-tertiary: #2a2a2b;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --text-muted: #808080;
+            --accent-carbon: #ff6b35;
+            --accent-nucleophile: #4a90e2;
+            --accent-leaving: #2ecc71;
+            --accent-success: #27ae60;
+            --accent-error: #e74c3c;
+            --accent-warning: #f39c12;
+            --border-color: #404040;
+            --shadow-primary: 0 4px 24px rgba(0,0,0,0.4);
+            --shadow-secondary: 0 2px 12px rgba(0,0,0,0.3);
+        }
+        
+        body {
+            font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        .app-container {
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #0d0d0e 100%);
+        }
+        
+        .molecular-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(255, 107, 53, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(74, 144, 226, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 40% 60%, rgba(46, 204, 113, 0.02) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .app-content {
+            position: relative;
+            z-index: 1;
+            padding: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+        
+        .subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 500;
+        }
+        
+        .setup-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: var(--shadow-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .topic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .topic-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        
+        .topic-item:hover {
+            background: var(--bg-primary);
+            border-color: var(--accent-carbon);
+            transform: translateY(-2px);
+        }
+        
+        .topic-item.selected {
+            background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(255, 107, 53, 0.05) 100%);
+            border-color: var(--accent-carbon);
+        }
+        
+        .topic-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .topic-item.selected .topic-checkbox {
+            background: var(--accent-carbon);
+            border-color: var(--accent-carbon);
+        }
+        
+        .topic-checkbox::after {
+            content: '✓';
+            color: var(--bg-primary);
+            font-weight: bold;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.3s ease;
+        }
+        
+        .topic-item.selected .topic-checkbox::after {
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        .topic-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            flex: 1;
+        }
+        
+        .start-button {
+            width: 100%;
+            padding: 1.25rem 2rem;
+            background: linear-gradient(135deg, var(--accent-carbon) 0%, #d35400 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-family: inherit;
+            box-shadow: var(--shadow-secondary);
+        }
+        
+        .start-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(255, 107, 53, 0.3);
+        }
+        
+        .start-button:disabled {
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        .game-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1rem 2rem;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .game-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .back-button {
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .back-button:hover {
+            background: var(--accent-carbon);
+            border-color: var(--accent-carbon);
+        }
+        
+        .progress-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .progress-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            transition: all 0.3s ease;
+        }
+        
+        .progress-dot.completed {
+            background: var(--accent-success);
+        }
+        
+        .progress-dot.current {
+            background: var(--accent-carbon);
+            transform: scale(1.5);
+        }
+        
+        .reaction-display {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-secondary);
+        }
+        
+        .reaction-equation {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+        
+        .molecule-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.5rem;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            min-width: 200px;
+        }
+        
+        .molecule-name {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+        
+        .molecule-structure {
+            font-family: 'Arial', sans-serif;
+            font-size: 1rem;
+            color: var(--text-primary);
+            text-align: center;
+            line-height: 1.4;
+        }
+        
+        .hotspot {
+            color: var(--accent-carbon);
+            font-weight: bold;
+            text-decoration: underline;
+            text-decoration-color: var(--accent-carbon);
+        }
+        
+        .reaction-arrow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0 1rem;
+        }
+        
+        .arrow {
+            width: 60px;
+            height: 3px;
+            background: var(--text-primary);
+            position: relative;
+        }
+        
+        .arrow::after {
+            content: '';
+            position: absolute;
+            right: -3px;
+            top: -5px;
+            width: 0;
+            height: 0;
+            border-left: 12px solid var(--text-primary);
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+        }
+        
+        .reaction-conditions {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        .condition {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--accent-nucleophile);
+            text-align: center;
+            padding: 0.25rem 0.5rem;
+            background: rgba(74, 144, 226, 0.1);
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+        
+        .condition.step-i {
+            color: var(--accent-carbon);
+            background: rgba(255, 107, 53, 0.1);
+        }
+        
+        .condition.step-ii {
+            color: var(--accent-nucleophile);
+            background: rgba(74, 144, 226, 0.1);
+        }
+        
+        .product-placeholder {
+            border: 2px dashed var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .product-result {
+            background: linear-gradient(135deg, rgba(39, 174, 96, 0.1) 0%, rgba(39, 174, 96, 0.05) 100%);
+            border: 2px solid var(--accent-success);
+            color: var(--accent-success);
+        }
+        
+        .interaction-area {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+        }
+        
+        .action-panel {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-secondary);
+        }
+        
+        .stage-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .stage-number {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-carbon);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: bold;
+        }
+        
+        .stage-description {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.5;
+        }
+        
+        .options-grid {
+            display: grid;
+            gap: 0.75rem;
+        }
+        
+        .option-button {
+            padding: 1rem 1.5rem;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .option-button:hover {
+            background: var(--bg-primary);
+            border-color: var(--accent-carbon);
+            transform: translateX(4px);
+        }
+        
+        .feedback-panel {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-secondary);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .feedback-content {
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 2px solid;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .feedback-success {
+            background: rgba(39, 174, 96, 0.1);
+            border-color: var(--accent-success);
+            color: var(--accent-success);
+        }
+        
+        .feedback-error {
+            background: rgba(231, 76, 60, 0.1);
+            border-color: var(--accent-error);
+            color: var(--accent-error);
+        }
+        
+        .feedback-title {
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+        }
+        
+        .feedback-message {
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+        
+        .hint-content {
+            background: rgba(74, 144, 226, 0.1);
+            border: 2px solid var(--accent-nucleophile);
+            color: var(--accent-nucleophile);
+        }
+        
+        .hint-button {
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            font-size: 0.875rem;
+        }
+        
+        .hint-button:hover {
+            background: var(--accent-nucleophile);
+            color: white;
+            border-color: var(--accent-nucleophile);
+        }
+        
+        .completion-screen {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 3rem;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-primary);
+        }
+        
+        .completion-icon {
+            font-size: 4rem;
+            color: var(--accent-success);
+            margin-bottom: 1rem;
+        }
+        
+        .completion-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+        
+        .score-display {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--accent-carbon);
+            margin: 1rem 0;
+        }
+        
+        .score-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        .restart-button {
+            margin-top: 2rem;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, var(--accent-nucleophile) 0%, #3498db 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .restart-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(74, 144, 226, 0.3);
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .app-content {
+                padding: 1rem;
+            }
+            
+            .interaction-area {
+                grid-template-columns: 1fr;
+            }
+            
+            .reaction-equation {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .molecule-container {
+                min-width: unset;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // Comprehensive reaction database with 6-carbon molecules and proper PSPM formatting
+        const TOPICS = [
+            'Alkanes',
+            'Alkenes', 
+            'Benzene and Derivatives',
+            'Haloalkanes',
+            'Hydroxy Compounds',
+            'Carbonyl Compounds',
+            'Carboxylic Acid and Derivatives',
+            'Amines',
+            'Amino Acids'
+        ];
+
+        const REACTIONS_DATABASE = [
+            // ALKANES - Free Radical Substitution
+            {
+                topic: 'Alkanes',
+                type: 'Substitution',
+                job: 'Free Radical Halogenation',
+                startingMaterial: {
+                    name: '2-Methylpentane',
+                    structure: 'CH₃CH₂CH₂CH(CH₃)CH₃',
+                    hotspot: '3° C-H Bond',
+                    functionalGroup: 'Alkanes'
+                },
+                reagents: ['Cl₂'],
+                conditions: ['UV light'],
+                steps: ['Cl₂', 'UV light'],
+                patternKey: 'Free radicals preferentially attack tertiary carbons due to stability of the resulting carbocation.',
+                correctProduct: '2-Chloro-2-methylpentane',
+                distractors: ['1-Chloro-2-methylpentane', '3-Chloro-2-methylpentane', '2-Methylpentene']
+            },
+            {
+                topic: 'Alkanes',
+                type: 'Substitution', 
+                job: 'Free Radical Halogenation',
+                startingMaterial: {
+                    name: '3-Methylhexane',
+                    structure: 'CH₃CH₂CH(CH₃)CH₂CH₂CH₃',
+                    hotspot: '3° C-H Bond',
+                    functionalGroup: 'Alkanes'
+                },
+                reagents: ['Br₂'],
+                conditions: ['UV light'],
+                steps: ['Br₂', 'UV light'],
+                patternKey: 'Bromine radicals are more selective than chlorine, favoring tertiary positions even more strongly.',
+                correctProduct: '3-Bromo-3-methylhexane',
+                distractors: ['2-Bromo-3-methylhexane', '1-Bromo-3-methylhexane', '3-Methylhexene']
+            },
+
+            // ALKENES - Addition Reactions  
+            {
+                topic: 'Alkenes',
+                type: 'Addition',
+                job: 'Hydration (Markovnikov)',
+                startingMaterial: {
+                    name: '2-Methylpent-2-ene',
+                    structure: 'CH₃CH₂C(CH₃)=CHCH₃',
+                    hotspot: 'C=C Pi Bond',
+                    functionalGroup: 'Alkenes'
+                },
+                reagents: ['H₂O'],
+                conditions: ['H₂SO₄'],
+                steps: ['H₂O', 'H₂SO₄'],
+                patternKey: 'Markovnikov addition: H⁺ adds to carbon with more hydrogens, forming the more stable carbocation.',
+                correctProduct: '2-Methylpentan-2-ol',
+                distractors: ['2-Methylpentan-3-ol', 'Pentan-2-ol', '2-Methylpentane']
+            },
+            {
+                topic: 'Alkenes',
+                type: 'Addition',
+                job: 'Anti-Markovnikov Addition',
+                startingMaterial: {
+                    name: 'Hex-1-ene',
+                    structure: 'CH₂=CHCH₂CH₂CH₂CH₃',
+                    hotspot: 'C=C Pi Bond',
+                    functionalGroup: 'Alkenes'
+                },
+                reagents: ['HBr', 'H₂O₂'],
+                conditions: [],
+                steps: ['HBr + H₂O₂'],
+                patternKey: 'Peroxide effect reverses regioselectivity through radical mechanism, giving anti-Markovnikov product.',
+                correctProduct: '1-Bromohexane',
+                distractors: ['2-Bromohexane', 'Hexan-1-ol', 'Hexane']
+            },
+            {
+                topic: 'Alkenes',
+                type: 'Oxidation',
+                job: 'Ozonolysis',
+                startingMaterial: {
+                    name: '3-Methylpent-2-ene',
+                    structure: 'CH₃CH₂C(CH₃)=CHCH₃',
+                    hotspot: 'C=C Double Bond',
+                    functionalGroup: 'Alkenes'
+                },
+                reagents: [],
+                conditions: ['i. O₃', 'ii. Zn, H₂O'],
+                steps: ['i. O₃', 'ii. Zn, H₂O'],
+                patternKey: 'Ozonolysis cleaves the double bond completely, forming two carbonyl compounds.',
+                correctProduct: 'Butanone + Ethanal',
+                distractors: ['Pentanone + Methanal', '3-Methylpentan-2-ol', 'Pentanoic acid + Ethanoic acid']
+            },
+
+            // BENZENE - Electrophilic Aromatic Substitution
+            {
+                topic: 'Benzene and Derivatives',
+                type: 'Substitution',
+                job: 'Friedel-Crafts Alkylation',
+                startingMaterial: {
+                    name: 'Benzene',
+                    structure: 'C₆H₆',
+                    hotspot: 'Aromatic Ring',
+                    functionalGroup: 'Benzene and Derivatives'
+                },
+                reagents: ['CH₃CH₂Cl'],
+                conditions: ['AlCl₃'],
+                steps: ['CH₃CH₂Cl', 'AlCl₃'],
+                patternKey: 'AlCl₃ generates carbocation electrophile which attacks the electron-rich benzene ring.',
+                correctProduct: 'Ethylbenzene',
+                distractors: ['Methylbenzene', 'Propylbenzene', 'Chlorobenzene']
+            },
+            {
+                topic: 'Benzene and Derivatives',
+                type: 'Substitution',
+                job: 'Nitration',
+                startingMaterial: {
+                    name: 'Methylbenzene',
+                    structure: 'C₆H₅CH₃',
+                    hotspot: 'Aromatic Ring',
+                    functionalGroup: 'Benzene and Derivatives'
+                },
+                reagents: ['HNO₃'],
+                conditions: ['conc. H₂SO₄', '50-55°C'],
+                steps: ['HNO₃', 'conc. H₂SO₄'],
+                patternKey: 'Methyl group is ortho/para directing activator, NO₂⁺ attacks these positions preferentially.',
+                correctProduct: '4-Nitromethylbenzene (major)',
+                distractors: ['3-Nitromethylbenzene', '2-Nitromethylbenzene only', 'Nitrobenzene']
+            },
+
+            // HALOALKANES - Nucleophilic Substitution
+            {
+                topic: 'Haloalkanes',
+                type: 'Substitution',
+                job: 'SN2 Nucleophilic Substitution',
+                startingMaterial: {
+                    name: '1-Bromohexane',
+                    structure: 'CH₃CH₂CH₂CH₂CH₂CH₂Br',
+                    hotspot: 'C-Br Bond',
+                    functionalGroup: 'Haloalkanes'
+                },
+                reagents: ['NaOH'],
+                conditions: ['aqueous'],
+                steps: ['NaOH (aq)'],
+                patternKey: 'Primary haloalkanes undergo SN2 mechanism: backside attack by nucleophile with inversion.',
+                correctProduct: 'Hexan-1-ol',
+                distractors: ['Hexane', 'Hex-1-ene', 'Hexanoic acid']
+            },
+            {
+                topic: 'Haloalkanes',
+                type: 'Substitution',
+                job: 'SN1 Nucleophilic Substitution',
+                startingMaterial: {
+                    name: '2-Bromo-2-methylpentane',
+                    structure: '(CH₃)₂CHC(Br)(CH₃)CH₂CH₃',
+                    hotspot: 'C-Br Bond',
+                    functionalGroup: 'Haloalkanes'
+                },
+                reagents: ['H₂O'],
+                conditions: ['heat'],
+                steps: ['H₂O', 'heat'],
+                patternKey: 'Tertiary haloalkanes undergo SN1: carbocation intermediate forms, then attacked by nucleophile.',
+                correctProduct: '2-Methylpentan-2-ol',
+                distractors: ['2-Methylpent-2-ene', 'Pentan-2-ol', '2-Methylpentane']
+            },
+            {
+                topic: 'Haloalkanes',
+                type: 'Elimination',
+                job: 'E2 Elimination',
+                startingMaterial: {
+                    name: '2-Chloro-2-methylbutane',
+                    structure: '(CH₃)₂CCl CH₂CH₃',
+                    hotspot: 'C-Cl Bond',
+                    functionalGroup: 'Haloalkanes'
+                },
+                reagents: ['KOH'],
+                conditions: ['ethanol', 'reflux'],
+                steps: ['KOH, ethanol', 'reflux'],
+                patternKey: 'Strong base promotes elimination over substitution, removing HCl to form alkene.',
+                correctProduct: '2-Methylbut-2-ene',
+                distractors: ['2-Methylbutan-2-ol', '2-Methylbutane', 'But-2-ene']
+            },
+
+            // HYDROXY COMPOUNDS - Alcohols
+            {
+                topic: 'Hydroxy Compounds',
+                type: 'Elimination',
+                job: 'Dehydration',
+                startingMaterial: {
+                    name: '2-Methylbutan-2-ol',
+                    structure: '(CH₃)₂C(OH)CH₂CH₃',
+                    hotspot: 'C-OH Bond',
+                    functionalGroup: 'Hydroxy Compounds'
+                },
+                reagents: [],
+                conditions: ['conc. H₂SO₄', '180°C'],
+                steps: ['conc. H₂SO₄', '180°C'],
+                patternKey: 'Tertiary alcohols eliminate easily via carbocation intermediate following Zaitsev rule.',
+                correctProduct: '2-Methylbut-2-ene',
+                distractors: ['2-Methylbut-1-ene', '2-Methylbutane', 'But-2-ene']
+            },
+            {
+                topic: 'Hydroxy Compounds',
+                type: 'Oxidation',
+                job: 'Primary Alcohol Oxidation',
+                startingMaterial: {
+                    name: 'Hexan-1-ol',
+                    structure: 'CH₃CH₂CH₂CH₂CH₂CH₂OH',
+                    hotspot: 'Alpha Carbon',
+                    functionalGroup: 'Hydroxy Compounds'
+                },
+                reagents: [],
+                conditions: ['K₂Cr₂O₇, H⁺', 'heat'],
+                steps: ['[O]'],
+                patternKey: 'Strong oxidizing agents convert primary alcohols through aldehyde to carboxylic acid.',
+                correctProduct: 'Hexanoic acid',
+                distractors: ['Hexanal', 'Hexane', 'Hexanone']
+            },
+            {
+                topic: 'Hydroxy Compounds',
+                type: 'Oxidation',
+                job: 'Secondary Alcohol Oxidation',
+                startingMaterial: {
+                    name: '3-Methylpentan-2-ol',
+                    structure: 'CH₃CH(OH)CH(CH₃)CH₂CH₃',
+                    hotspot: 'Alpha Carbon',
+                    functionalGroup: 'Hydroxy Compounds'
+                },
+                reagents: [],
+                conditions: ['K₂Cr₂O₇, H⁺'],
+                steps: ['[O]'],
+                patternKey: 'Secondary alcohols oxidize to ketones - no further oxidation possible.',
+                correctProduct: '3-Methylpentan-2-one',
+                distractors: ['3-Methylpentanoic acid', '3-Methylpentan-3-ol', 'Pentan-2-one']
+            },
+
+            // CARBONYL COMPOUNDS
+            {
+                topic: 'Carbonyl Compounds',
+                type: 'Reduction',
+                job: 'Aldehyde Reduction',
+                startingMaterial: {
+                    name: '3-Methylpentanal',
+                    structure: 'CH₃CH₂CH(CH₃)CH₂CHO',
+                    hotspot: 'Carbonyl C=O',
+                    functionalGroup: 'Carbonyl Compounds'
+                },
+                reagents: ['NaBH₄'],
+                conditions: ['methanol'],
+                steps: ['NaBH₄', 'methanol'],
+                patternKey: 'Hydride ion attacks electrophilic carbonyl carbon, reducing aldehyde to primary alcohol.',
+                correctProduct: '3-Methylpentan-1-ol',
+                distractors: ['3-Methylpentanoic acid', '3-Methylpentane', 'Pentan-1-ol']
+            },
+            {
+                topic: 'Carbonyl Compounds',
+                type: 'Reduction',
+                job: 'Ketone Reduction',
+                startingMaterial: {
+                    name: 'Hexan-2-one',
+                    structure: 'CH₃COCH₂CH₂CH₂CH₃',
+                    hotspot: 'Carbonyl C=O',
+                    functionalGroup: 'Carbonyl Compounds'
+                },
+                reagents: ['NaBH₄'],
+                conditions: ['methanol'],
+                steps: ['NaBH₄', 'methanol'],
+                patternKey: 'Ketone reduction gives secondary alcohol at the carbonyl carbon position.',
+                correctProduct: 'Hexan-2-ol',
+                distractors: ['Hexan-1-ol', 'Hexanoic acid', 'Hexane']
+            },
+            {
+                topic: 'Carbonyl Compounds',
+                type: 'Oxidation',
+                job: 'Aldehyde Oxidation',
+                startingMaterial: {
+                    name: 'Butanal',
+                    structure: 'CH₃CH₂CH₂CHO',
+                    hotspot: 'Aldehyde Group',
+                    functionalGroup: 'Carbonyl Compounds'
+                },
+                reagents: [],
+                conditions: ['[O]'],
+                steps: ['[O]'],
+                patternKey: 'Aldehydes readily oxidize to carboxylic acids by addition of oxygen.',
+                correctProduct: 'Butanoic acid',
+                distractors: ['Butan-1-ol', 'Butane', 'Butanone']
+            },
+
+            // CARBOXYLIC ACID AND DERIVATIVES
+            {
+                topic: 'Carboxylic Acid and Derivatives',
+                type: 'Substitution',
+                job: 'Acyl Chloride Formation',
+                startingMaterial: {
+                    name: 'Hexanoic acid',
+                    structure: 'CH₃CH₂CH₂CH₂CH₂COOH',
+                    hotspot: 'Carboxyl Group',
+                    functionalGroup: 'Carboxylic Acid and Derivatives'
+                },
+                reagents: ['SOCl₂'],
+                conditions: [],
+                steps: ['SOCl₂'],
+                patternKey: 'SOCl₂ replaces -OH with -Cl, forming highly reactive acyl chloride for further synthesis.',
+                correctProduct: 'Hexanoyl chloride',
+                distractors: ['Chlorohexane', 'Hexanal', 'Hexanol']
+            },
+            {
+                topic: 'Carboxylic Acid and Derivatives',
+                type: 'Substitution',
+                job: 'Esterification',
+                startingMaterial: {
+                    name: 'Pentanoic acid',
+                    structure: 'CH₃CH₂CH₂CH₂COOH',
+                    hotspot: 'Carboxyl Group',
+                    functionalGroup: 'Carboxylic Acid and Derivatives'
+                },
+                reagents: ['CH₃CH₂OH'],
+                conditions: ['conc. H₂SO₄', 'heat'],
+                steps: ['CH₃CH₂OH', 'H₂SO₄, Δ'],
+                patternKey: 'Fischer esterification: nucleophilic attack by alcohol on protonated carbonyl carbon.',
+                correctProduct: 'Ethyl pentanoate',
+                distractors: ['Pentanol', 'Ethyl ethanoate', 'Pentanal']
+            },
+
+            // AMINES
+            {
+                topic: 'Amines',
+                type: 'Reduction',
+                job: 'Nitrile Reduction',
+                startingMaterial: {
+                    name: 'Pentanenitrile',
+                    structure: 'CH₃CH₂CH₂CH₂CN',
+                    hotspot: 'C≡N Bond',
+                    functionalGroup: 'Amines'
+                },
+                reagents: [],
+                conditions: ['i. LiAlH₄', 'ii. H₂O'],
+                steps: ['i. LiAlH₄', 'ii. H₂O'],
+                patternKey: 'Strong reducing agent LiAlH₄ reduces nitrile to primary amine with same carbon count.',
+                correctProduct: 'Pentan-1-amine',
+                distractors: ['Pentanoic acid', 'Pentan-1-ol', 'Pentanamide']
+            },
+            {
+                topic: 'Amines',
+                type: 'Substitution',
+                job: 'Hofmann Degradation',
+                startingMaterial: {
+                    name: 'Hexanamide',
+                    structure: 'CH₃CH₂CH₂CH₂CH₂CONH₂',
+                    hotspot: 'Amide Group',
+                    functionalGroup: 'Amines'
+                },
+                reagents: ['Br₂'],
+                conditions: ['NaOH (aq)'],
+                steps: ['Br₂, NaOH (aq)'],
+                patternKey: 'Hofmann degradation removes one carbon, converting amide to amine with one less carbon.',
+                correctProduct: 'Pentan-1-amine',
+                distractors: ['Hexan-1-amine', 'Hexanoic acid', 'Hexan-1-ol']
+            },
+
+            // AMINO ACIDS
+            {
+                topic: 'Amino Acids',
+                type: 'Condensation',
+                job: 'Peptide Bond Formation',
+                startingMaterial: {
+                    name: 'Alanine',
+                    structure: 'CH₃CH(NH₂)COOH',
+                    hotspot: 'NH₂ & COOH',
+                    functionalGroup: 'Amino Acids'
+                },
+                reagents: ['Glycine NH₂CH₂COOH'],
+                conditions: [],
+                steps: ['-H₂O'],
+                patternKey: 'Condensation reaction between amino group and carboxyl group forms amide linkage.',
+                correctProduct: 'Alanylglycine (dipeptide)',
+                distractors: ['Dialanine', 'Alanine ester', 'Alanine amide']
+            },
+            {
+                topic: 'Amino Acids',
+                type: 'Substitution',
+                job: 'Ester Formation',
+                startingMaterial: {
+                    name: 'Glycine',
+                    structure: 'NH₂CH₂COOH',
+                    hotspot: 'COOH Group',
+                    functionalGroup: 'Amino Acids'
+                },
+                reagents: ['CH₃OH'],
+                conditions: ['HCl'],
+                steps: ['CH₃OH', 'HCl'],
+                patternKey: 'Acid-catalyzed esterification of the carboxylic acid group in amino acids.',
+                correctProduct: 'Methyl glycinate',
+                distractors: ['Glycinamide', 'N-Methylglycine', 'Glycyl methyl ester']
+            }
+        ];
+
+        const STAGES = {
+            SETUP: 'setup',
+            IDENTIFY: 'identify', 
+            CLASSIFY: 'classify',
+            PREDICT: 'predict',
+            COMPLETE: 'complete'
+        };
+
+        function OrganicChemistryMaster() {
+            const [stage, setStage] = useState(STAGES.SETUP);
+            const [selectedTopics, setSelectedTopics] = useState(TOPICS);
+            const [currentIdx, setCurrentIdx] = useState(0);
+            const [showHint, setShowHint] = useState(false);
+            const [feedback, setFeedback] = useState(null);
+            const [score, setScore] = useState(0);
+            const [shuffledPool, setShuffledPool] = useState([]);
+
+            const currentReaction = shuffledPool[currentIdx];
+
+            const prepareSession = () => {
+                const pool = REACTIONS_DATABASE
+                    .filter(r => selectedTopics.includes(r.topic))
+                    .sort(() => Math.random() - 0.5);
+                
+                setShuffledPool(pool);
+                setCurrentIdx(0);
+                setScore(0);
+                setStage(STAGES.IDENTIFY);
+                setFeedback(null);
+                setShowHint(false);
+            };
+
+            const handleBack = () => {
+                setStage(STAGES.SETUP);
+                setFeedback(null);
+                setShowHint(false);
+            };
+
+            const handleIdentify = (group) => {
+                if (group === currentReaction.startingMaterial.functionalGroup) {
+                    setFeedback({ 
+                        type: 'success', 
+                        message: `Correct! The reactive site is at the ${currentReaction.startingMaterial.hotspot}.` 
+                    });
+                    setTimeout(() => {
+                        setStage(STAGES.CLASSIFY);
+                        setFeedback(null);
+                        setShowHint(false);
+                    }, 1500);
+                } else {
+                    setFeedback({ 
+                        type: 'error', 
+                        message: "Incorrect functional group identification. Look for the most reactive site in this molecule." 
+                    });
+                }
+            };
+
+            const handleClassify = (type) => {
+                if (type === currentReaction.type) {
+                    setFeedback({ 
+                        type: 'success', 
+                        message: `Excellent! This is indeed a ${currentReaction.type} reaction: ${currentReaction.job}.` 
+                    });
+                    setTimeout(() => {
+                        setStage(STAGES.PREDICT);
+                        setFeedback(null);
+                        setShowHint(false);
+                    }, 1500);
+                } else {
+                    setFeedback({ 
+                        type: 'error', 
+                        message: "Consider what happens to the molecular connectivity in this reaction." 
+                    });
+                }
+            };
+
+            const handlePredict = (product) => {
+                if (product === currentReaction.correctProduct) {
+                    setScore(s => s + 1);
+                    setFeedback({ 
+                        type: 'success', 
+                        message: `Perfect! ${currentReaction.patternKey}` 
+                    });
+                    setTimeout(() => {
+                        if (currentIdx < shuffledPool.length - 1) {
+                            setCurrentIdx(i => i + 1);
+                            setStage(STAGES.IDENTIFY);
+                            setFeedback(null);
+                            setShowHint(false);
+                        } else {
+                            setStage(STAGES.COMPLETE);
+                        }
+                    }, 4000);
+                } else {
+                    setFeedback({ 
+                        type: 'error', 
+                        message: `Not quite right. ${currentReaction.patternKey}` 
+                    });
+                }
+            };
+
+            const predictOptions = useMemo(() => {
+                if (!currentReaction) return [];
+                return [currentReaction.correctProduct, ...currentReaction.distractors]
+                    .sort(() => Math.random() - 0.5);
+            }, [currentReaction]);
+
+            const toggleTopic = (topic) => {
+                setSelectedTopics(prev => 
+                    prev.includes(topic) 
+                        ? prev.filter(t => t !== topic)
+                        : [...prev, topic]
+                );
+            };
+
+            if (stage === STAGES.SETUP) {
+                return (
+                    <div className="app-container">
+                        <div className="molecular-bg"></div>
+                        <div className="app-content">
+                            <div className="header">
+                                <h1 className="title">Organic Chemistry Reaction Master</h1>
+                                <p className="subtitle">Advanced Pattern Recognition System</p>
+                            </div>
+                            
+                            <div className="setup-container">
+                                <h2 style={{marginBottom: '1.5rem', color: 'var(--text-primary)'}}>
+                                    Select Topics for Investigation
+                                </h2>
+                                
+                                <div className="topic-grid">
+                                    {TOPICS.map(topic => (
+                                        <div 
+                                            key={topic}
+                                            className={`topic-item ${selectedTopics.includes(topic) ? 'selected' : ''}`}
+                                            onClick={() => toggleTopic(topic)}
+                                        >
+                                            <div className="topic-checkbox"></div>
+                                            <div className="topic-label">{topic}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                                
+                                <button 
+                                    className="start-button"
+                                    disabled={selectedTopics.length === 0}
+                                    onClick={prepareSession}
+                                >
+                                    Begin Investigation ({selectedTopics.length} topics selected)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (stage === STAGES.COMPLETE) {
+                return (
+                    <div className="app-container">
+                        <div className="molecular-bg"></div>
+                        <div className="app-content">
+                            <div className="completion-screen">
+                                <div className="completion-icon">🧪</div>
+                                <h1 className="completion-title">Investigation Complete</h1>
+                                <p style={{color: 'var(--text-secondary)', marginBottom: '2rem'}}>
+                                    All reaction patterns have been analyzed
+                                </p>
+                                
+                                <div className="score-display">{score} / {shuffledPool.length}</div>
+                                <p className="score-label">Pattern Recognition Score</p>
+                                
+                                <button className="restart-button" onClick={() => setStage(STAGES.SETUP)}>
+                                    New Investigation
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="app-container">
+                    <div className="molecular-bg"></div>
+                    <div className="app-content">
+                        <div className="game-container">
+                            <div className="game-header">
+                                <div className="game-info">
+                                    <button className="back-button" onClick={handleBack}>
+                                        ← Setup
+                                    </button>
+                                    <span style={{color: 'var(--text-secondary)', fontSize: '0.875rem'}}>
+                                        Reaction {currentIdx + 1} of {shuffledPool.length}
+                                    </span>
+                                </div>
+                                
+                                <div className="progress-bar">
+                                    {shuffledPool.map((_, i) => (
+                                        <div 
+                                            key={i}
+                                            className={`progress-dot ${
+                                                i < currentIdx ? 'completed' : 
+                                                i === currentIdx ? 'current' : ''
+                                            }`}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="reaction-display">
+                                <div className="reaction-equation">
+                                    <div className="molecule-container">
+                                        <div className="molecule-name">{currentReaction?.startingMaterial.name}</div>
+                                        <div className="molecule-structure">
+                                            {currentReaction?.startingMaterial.structure.split('').map((char, i) => {
+                                                if (currentReaction.startingMaterial.hotspot.includes('C=C') && char === '=') {
+                                                    return <span key={i} className="hotspot">=</span>;
+                                                }
+                                                if (currentReaction.startingMaterial.hotspot.includes('C-') && char === 'C' && i > 0) {
+                                                    return <span key={i} className="hotspot">C</span>;
+                                                }
+                                                return char;
+                                            })}
+                                        </div>
+                                        <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>
+                                            Target: {currentReaction?.startingMaterial.hotspot}
+                                        </div>
+                                    </div>
+
+                                    <div className="reaction-arrow">
+                                        <div className="reaction-conditions">
+                                            {currentReaction?.reagents.map(reagent => (
+                                                <div key={reagent} style={{fontSize: '0.875rem', color: 'var(--text-primary)', marginBottom: '0.5rem'}}>
+                                                    + {reagent}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        
+                                        <div className="arrow"></div>
+                                        
+                                        <div className="reaction-conditions">
+                                            {currentReaction?.conditions.map((condition, i) => (
+                                                <div key={i} className={`condition ${i === 0 ? 'step-i' : 'step-ii'}`}>
+                                                    {i === 0 && currentReaction.conditions.length > 1 ? 'i. ' : ''}
+                                                    {i === 1 ? 'ii. ' : ''}
+                                                    {condition}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className={`molecule-container ${
+                                        feedback?.type === 'success' && stage === STAGES.PREDICT 
+                                            ? 'product-result' 
+                                            : 'product-placeholder'
+                                    }`}>
+                                        {feedback?.type === 'success' && stage === STAGES.PREDICT ? (
+                                            <>
+                                                <div className="molecule-name">{currentReaction.correctProduct}</div>
+                                                <div style={{fontSize: '2rem', color: 'var(--accent-success)'}}>✓</div>
+                                            </>
+                                        ) : (
+                                            <div style={{fontSize: '2rem'}}>?</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="interaction-area">
+                                <div className="action-panel">
+                                    <div className="stage-title">
+                                        <div className="stage-number">
+                                            {stage === STAGES.IDENTIFY ? '1' : stage === STAGES.CLASSIFY ? '2' : '3'}
+                                        </div>
+                                        <div>
+                                            {stage === STAGES.IDENTIFY && "Identify Functional Group"}
+                                            {stage === STAGES.CLASSIFY && "Classify Reaction Type"} 
+                                            {stage === STAGES.PREDICT && "Predict Major Product"}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="stage-description">
+                                        {stage === STAGES.IDENTIFY && "Which functional group contains the primary reactive site?"}
+                                        {stage === STAGES.CLASSIFY && "What type of reaction mechanism occurs here?"}
+                                        {stage === STAGES.PREDICT && "What is the major product formed?"}
+                                    </div>
+
+                                    <div className="options-grid">
+                                        {stage === STAGES.IDENTIFY && TOPICS.map(topic => (
+                                            <button 
+                                                key={topic}
+                                                className="option-button"
+                                                onClick={() => handleIdentify(topic)}
+                                            >
+                                                {topic}
+                                            </button>
+                                        ))}
+                                        
+                                        {stage === STAGES.CLASSIFY && [
+                                            'Addition', 'Substitution', 'Elimination', 
+                                            'Oxidation', 'Reduction', 'Condensation'
+                                        ].map(type => (
+                                            <button 
+                                                key={type}
+                                                className="option-button"
+                                                onClick={() => handleClassify(type)}
+                                            >
+                                                {type}
+                                            </button>
+                                        ))}
+                                        
+                                        {stage === STAGES.PREDICT && predictOptions.map(product => (
+                                            <button 
+                                                key={product}
+                                                className="option-button"
+                                                onClick={() => handlePredict(product)}
+                                            >
+                                                {product}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="feedback-panel">
+                                    {feedback ? (
+                                        <div className={`feedback-content ${
+                                            feedback.type === 'success' ? 'feedback-success' : 'feedback-error'
+                                        }`}>
+                                            <div className="feedback-title">
+                                                {feedback.type === 'success' ? 'Correct' : 'Try Again'}
+                                            </div>
+                                            <div className="feedback-message">{feedback.message}</div>
+                                        </div>
+                                    ) : showHint ? (
+                                        <div className="feedback-content hint-content">
+                                            <div className="feedback-title">Pattern Hint</div>
+                                            <div className="feedback-message">
+                                                Look for the most reactive site: {currentReaction?.startingMaterial.hotspot}
+                                                <br/><br/>
+                                                <strong>Reaction Type:</strong> {currentReaction?.job}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <button 
+                                            className="hint-button"
+                                            onClick={() => setShowHint(true)}
+                                        >
+                                            💡 Need a hint?
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<OrganicChemistryMaster />, document.getElementById('root'));
+    </script>
+</body>
+</html>
